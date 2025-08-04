@@ -1,0 +1,120 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <cctype>
+#include <unordered_set>
+#include <regex>
+using namespace std;
+
+// Define C++ keywords
+unordered_set<string> keywords = {
+    "auto","break","case","char","const","continue","default","do","double",
+    "else","enum","extern","float","for","goto","if","int","long","register",
+    "return","short","signed","sizeof","static","struct","switch","typedef",
+    "union","unsigned","void","volatile","while","class","public","private",
+    "protected","template","typename","try","catch","throw","include","using",
+    "namespace","new","delete","this","virtual","override","bool","true","false"
+};
+
+// Define operators and punctuations
+unordered_set<string> operators = {
+    "+", "-", "*", "/", "%", "=", "==", "!=", "<", "<=", ">", ">=",
+    "&&", "||", "!", "++", "--", "+=", "-=", "*=", "/=", "%=", "&", "|", "^", "~", "<<", ">>"
+};
+
+unordered_set<char> delimiters = { ';', ',', '(', ')', '{', '}', '[', ']', '#', ':' };
+
+// Check if identifier is valid
+bool isValidIdentifier(const string& str) {
+    if (str.empty()) return false;
+    if (!(isalpha(str[0]) || str[0] == '_')) return false;
+    for (char c : str) {
+        if (!(isalnum(c) || c == '_'))
+            return false;
+    }
+    return true;
+}
+
+void classifyToken(const string& token) {
+    if (token.empty()) return;
+
+    if (keywords.find(token) != keywords.end()) {
+        cout << token << " : Keyword\n";
+    }
+    else if (operators.find(token) != operators.end()) {
+        cout << token << " : Operator\n";
+    }
+    else if (token.length() == 1 && delimiters.find(token[0]) != delimiters.end()) {
+        cout << token << " : Delimiter\n";
+    }
+    else if (regex_match(token, regex("[0-9]+"))) {
+        cout << token << " : Integer Literal\n";
+    }
+    else if (regex_match(token, regex("[0-9]*\\.[0-9]+"))) {
+        cout << token << " : Float Literal\n";
+    }
+    else if (isValidIdentifier(token)) {
+        cout << token << " : Valid Identifier\n";
+    }
+    else {
+        cout << token << " : Invalid Identifier or Unknown Token\n";
+    }
+}
+
+int main() {
+    ifstream file("input.cpp");
+    if (!file.is_open()) {
+        cerr << "Error opening file.\n";
+        return 1;
+    }
+
+    string line;
+    while (getline(file, line)) {
+        string token;
+        for (size_t i = 0; i < line.length(); ++i) {
+            char ch = line[i];
+
+            // Handle comments
+            if (ch == '/' && i + 1 < line.length() && line[i + 1] == '/') {
+                cout << line.substr(i) << " : Single-line Comment\n";
+                break;
+            }
+
+            // Separate tokens based on space or operators/delimiters
+            if (isspace(ch) || delimiters.find(ch) != delimiters.end() || ispunct(ch)) {
+                if (!token.empty()) {
+                    classifyToken(token);
+                    token.clear();
+                }
+
+                // Multi-character operators
+                string op = string(1, ch);
+                if (i + 1 < line.length() && ispunct(line[i + 1])) {
+                    op += line[i + 1];
+                    if (operators.find(op) != operators.end()) {
+                        classifyToken(op);
+                        i++;
+                        continue;
+                    } else {
+                        op.pop_back();  // Revert to single char
+                    }
+                }
+
+                if (operators.find(op) != operators.end() || delimiters.find(ch) != delimiters.end()) {
+                    classifyToken(op);
+                }
+            }
+            else {
+                token += ch;
+            }
+        }
+
+        // Any remaining token
+        if (!token.empty()) {
+            classifyToken(token);
+        }
+    }
+
+    file.close();
+    return 0;
+}
